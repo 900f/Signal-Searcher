@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Signal Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .landing-page {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100vh;
+            animation: fadeIn 1s ease-in;
+        }
+
+        .ar-view {
+            display: none;
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #2c3e50;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            color: #6c757d;
+            line-height: 1.6;
+        }
+
+        .provider-selection {
+            margin: 2rem 0;
+        }
+
+        .provider-selection h3,
+        .distance-selection h3 {
+            margin-bottom: 1rem;
+            color: #495057;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .distance-selection {
+            margin: 2rem 0;
+        }
+
+        .distance-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .distance-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .distance-card:hover {
+            border-color: #28a745;
+            box-shadow: 0 2px 8px rgba(40,167,69,0.15);
+        }
+
+        .distance-card.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+            box-shadow: 0 2px 8px rgba(40,167,69,0.2);
+        }
+
+        .distance-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.25rem;
+        }
+
+        .distance-desc {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .custom-distance {
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .custom-input-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 0.5rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .custom-input-group:focus-within {
+            border-color: #28a745;
+        }
+
+        .custom-input-group.selected {
+            border-color: #28a745;
+            background: #f8fff9;
+        }
+
+        #customDistanceInput {
+            border: none;
+            outline: none;
+            padding: 0.5rem;
+            width: 80px;
+            text-align: center;
+            font-size: 1rem;
+            background: transparent;
+        }
+
+        .unit-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .provider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+
+        .provider-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .provider-card:hover {
+            border-color: #007bff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.15);
+        }
+
+        .provider-card.selected {
+            border-color: #007bff;
+            background: #f8f9ff;
+            box-shadow: 0 2px 8px rgba(0,123,255,0.2);
+        }
+
+        .provider-logo {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .start-btn {
+            background: #007bff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 1rem;
+            font-weight: 500;
+        }
+
+        .start-btn:hover {
+            background: #0056b3;
+        }
+
+        .start-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        #video {
+            width: 100%;
+            height: 100vh;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+        .ar-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        .signal-path {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .path-end-marker {
+            position: absolute;
+            font-size: 2rem;
+            transform: translate(-50%, -50%);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            transition: all 0.5s ease;
+        }
+
+        .signal-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .signal-strength {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .signal-bars {
+            display: flex;
+            gap: 3px;
+        }
+
+        .bar {
+            width: 8px;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .bar.active {
+            background: #28a745;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            border: 1px solid #dee2e6;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            z-index: 3;
+        }
+
+        .compass-direction {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .distance-info {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.95);
+            color: #333;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .live-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+            margin-left: 8px;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .permission-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            color: #333;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            max-width: 400px;
+            margin: 20px;
+        }
+
+        .modal-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            font-weight: 500;
+        }
+
+        .modal-btn:hover {
+            background: #0056b3;
+        }
+
+        .signal-strength-number {
+            font-weight: bold;
+            margin-left: 10px;
+            color: #28a745;
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="landing-page" id="landingPage">
+            <h1>📡 AR Signal Finder</h1>
+            <p class="subtitle">
+                Find the best signal direction for your mobile provider using augmented reality. 
+                Select your provider below and let AR guide you to the strongest signal!
+            </p>
+            
+            <div class="provider-selection">
+                <h3>Select Your Provider:</h3>
+                <div class="provider-grid">
+                    <div class="provider-card" data-provider="ee">
+                        <div class="provider-logo">📱</div>
+                        <div>EE</div>
+                    </div>
+                    <div class="provider-card" data-provider="o2">
+                        <div class="provider-logo">🔵</div>
+                        <div>O2</div>
+                    </div>
+                    <div class="provider-card" data-provider="vodafone">
+                        <div class="provider-logo">🔴</div>
+                        <div>Vodafone</div>
+                    </div>
+                    <div class="provider-card" data-provider="three">
+                        <div class="provider-logo">3️⃣</div>
+                        <div>Three</div>
+                    </div>
+                    <div class="provider-card" data-provider="tesco">
+                        <div class="provider-logo">🛒</div>
+                        <div>Tesco Mobile</div>
+                    </div>
+                    <div class="provider-card" data-provider="giffgaff">
+                        <div class="provider-logo">💚</div>
+                        <div>giffgaff</div>
+                    </div>
+                </div>
+                
+                <div class="distance-selection">
+                    <h3>Search Distance:</h3>
+                    <div class="distance-options">
+                        <div class="distance-card" data-distance="5">
+                            <div class="distance-value">5m</div>
+                            <div class="distance-desc">Very close</div>
+                        </div>
+                        <div class="distance-card selected" data-distance="10">
+                            <div class="distance-value">10m</div>
+                            <div class="distance-desc">Nearby</div>
+                        </div>
+                        <div class="distance-card" data-distance="20">
+                            <div class="distance-value">20m</div>
+                            <div class="distance-desc">Extended range</div>
+                        </div>
+                    </div>
+                    
+                    <div class="custom-distance">
+                        <div class="custom-input-group" id="customInputGroup">
+                            <input type="number" id="customDistanceInput" placeholder="Enter" min="1" max="1000">
+                            <span class="unit-label">meters</span>
+                        </div>
+                        <small style="color: #6c757d;">Enter custom distance (1-1000m)</small>
+                    </div>
+                </div>
+                
+                <button class="start-btn" id="startArBtn" disabled>
+                    🚀 Start AR Signal Finder
+                </button>
+            </div>
+        </div>
+
+        <div class="ar-view" id="arView">
+            <video id="video" autoplay muted playsinline></video>
+            <button class="back-btn" onclick="exitAR()">✕</button>
+            
+            <div class="ar-overlay">
+                <div class="signal-info">
+                    <div><strong id="selectedProvider">EE</strong> Signal Direction<span class="live-indicator"></span></div>
+                    <div class="signal-strength">
+                        <span>Signal Strength:</span>
+                        <div class="signal-bars" id="signalBars">
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                        </div>
+                        <span class="signal-strength-number" id="signalStrengthNumber">4/5</span>
+                    </div>
+                </div>
+                
+                <div class="signal-path" id="signalPath">
+                    <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0;">
+                        <defs>
+                            <pattern id="dottedPattern" patternUnits="userSpaceOnUse" width="20" height="4">
+                                <circle cx="10" cy="2" r="2" fill="#007bff" opacity="0.8"/>
+                            </pattern>
+                        </defs>
+                        <path id="pathLine" stroke="url(#dottedPattern)" stroke-width="8" fill="none"/>
+                    </svg>
+                    <div class="path-end-marker" id="pathEndMarker">📡</div>
+                </div>
+                
+                <div class="compass-direction" id="compassDirection">
+                    Northeast (45°)
+                </div>
+                
+                <div class="distance-info" id="distanceInfo">
+                    Nearest tower: ~2.3m
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="permission-modal" id="permissionModal">
+        <div class="modal-content">
+            <h3>🎥 Camera & Location Access</h3>
+            <p>This app needs camera and location permissions to show AR directions to the best signal.</p>
+            <button class="modal-btn" onclick="requestPermissions()">Allow Access</button>
+            <button class="modal-btn" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+<script>
+    let selectedProvider = null;
+    let selectedDistance = 10; // Default 10m
+    let currentHeading = 0;
+    let targetDirection = 45; // Default northeast direction
+    let video = null;
+    let watchId = null;
+    let isCustomDistance = false;
+    let simulationIntervals = [];
+    let currentSignalStrength = 4;
+    let currentDistance = '8.7m';
+
+    // Enhanced provider data with multiple signal sources and dynamic behavior
+    const providerData = {
+        'ee': { 
+            baseDirections: [45, 120, 280],
+            baseDistances: ['4.2m', '8.7m', '18.3m'],
+            baseStrengths: [5, 4, 3],
+            signalVariation: 15,
+            strengthVariation: 1,
+            distanceVariation: 0.5
+        },
+        'o2': { 
+            baseDirections: [120, 200, 60],
+            baseDistances: ['4.8m', '9.1m', '19.2m'],
+            baseStrengths: [5, 5, 4],
+            signalVariation: 20,
+            strengthVariation: 1,
+            distanceVariation: 0.8
+        },
+        'vodafone': { 
+            baseDirections: [280, 45, 180],
+            baseDistances: ['4.1m', '8.9m', '17.5m'],
+            baseStrengths: [4, 4, 3],
+            signalVariation: 12,
+            strengthVariation: 1,
+            distanceVariation: 0.3
+        },
+        'three': { 
+            baseDirections: [200, 340, 90],
+            baseDistances: ['3.9m', '8.4m', '18.8m'],
+            baseStrengths: [5, 4, 4],
+            signalVariation: 18,
+            strengthVariation: 1,
+            distanceVariation: 0.6
+        },
+        'tesco': { 
+            baseDirections: [60, 180, 300],
+            baseDistances: ['4.5m', '9.3m', '19.7m'],
+            baseStrengths: [5, 5, 4],
+            signalVariation: 22,
+            strengthVariation: 1,
+            distanceVariation: 0.7
+        },
+        'giffgaff': { 
+            baseDirections: [340, 90, 220],
+            baseDistances: ['4.3m', '8.6m', '18.1m'],
+            baseStrengths: [4, 3, 3],
+            signalVariation: 16,
+            strengthVariation: 1,
+            distanceVariation: 0.4
+        }
+    };
+
+    // Provider selection
+    document.querySelectorAll('.provider-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.provider-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedProvider = card.dataset.provider;
+            updateStartButton();
+        });
+    });
+
+    // Distance selection
+    document.querySelectorAll('.distance-card').forEach(card => {
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.distance-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            selectedDistance = parseInt(card.dataset.distance);
+            isCustomDistance = false;
+            
+            // Clear custom input styling
+            document.getElementById('customInputGroup').classList.remove('selected');
+            document.getElementById('customDistanceInput').value = '';
+            
+            updateStartButton();
+        });
+    });
+
+    // Custom distance input
+    const customInput = document.getElementById('customDistanceInput');
+    const customInputGroup = document.getElementById('customInputGroup');
+
+    customInput.addEventListener('focus', () => {
+        document.querySelectorAll('.distance-card').forEach(c => c.classList.remove('selected'));
+        customInputGroup.classList.add('selected');
+        isCustomDistance = true;
+        updateStartButton();
+    });
+
+    customInput.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value);
+        if (value && value >= 1 && value <= 1000) {
+            selectedDistance = value;
+            isCustomDistance = true;
+            updateStartButton();
+        } else {
+            updateStartButton();
+        }
+    });
+
+    customInput.addEventListener('blur', () => {
+        if (!customInput.value) {
+            customInputGroup.classList.remove('selected');
+            isCustomDistance = false;
+            document.querySelector('.distance-card[data-distance="10"]').classList.add('selected');
+            selectedDistance = 10;
+            updateStartButton();
+        }
+    });
+
+    function updateStartButton() {
+        const startBtn = document.getElementById('startArBtn');
+        const validCustomDistance = isCustomDistance && selectedDistance >= 1 && selectedDistance <= 1000;
+        const validPresetDistance = !isCustomDistance && selectedDistance;
+        startBtn.disabled = !selectedProvider || (!validCustomDistance && !validPresetDistance);
+    }
+
+    // Start AR button
+    document.getElementById('startArBtn').addEventListener('click', () => {
+        if (selectedProvider) {
+            showPermissionModal();
+        }
+    });
+
+    function showPermissionModal() {
+        document.getElementById('permissionModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('permissionModal').style.display = 'none';
+    }
+
+    async function requestPermissions() {
+        closeModal();
+        
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('Camera not supported');
+            }
+
+            const constraints = {
+                video: {
+                    facingMode: { ideal: 'environment' },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            };
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            if (!stream || !stream.active) {
+                throw new Error('Failed to get active camera stream');
+            }
+            
+            if ('geolocation' in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    () => startAR(stream),
+                    (error) => {
+                        console.warn('Location access denied:', error);
+                        startAR(stream);
+                    },
+                    { timeout: 5000 }
+                );
+            } else {
+                startAR(stream);
+            }
+        } catch (error) {
+            console.error('Camera access error:', error);
+            let message = 'Camera access is required for AR functionality.';
+            if (error.name === 'NotAllowedError') {
+                message += ' Please enable camera permissions in your browser settings and refresh the page.';
+            } else if (error.name === 'NotFoundError') {
+                message += ' No camera found on your device.';
+            } else {
+                message += ' Please check your camera permissions and try again.';
+            }
+            alert(message);
+        }
+    }
+
+    function startAR(stream) {
+        try {
+            video = document.getElementById('video');
+            video.srcObject = stream;
+            
+            video.onloadedmetadata = () => {
+                video.play().then(() => {
+                    console.log('Video playing successfully');
+                    
+                    document.getElementById('landingPage').style.display = 'none';
+                    document.getElementById('arView').style.display = 'block';
+                    
+                    document.getElementById('selectedProvider').textContent = getProviderName(selectedProvider);
+                    
+                    startCompass();
+                    startLiveSimulation();
+                }).catch(error => {
+                    console.error('Video play failed:', error);
+                    alert('Failed to start camera. Please refresh and try again.');
+                });
+            };
+            
+            video.onerror = (error) => {
+                console.error('Video error:', error);
+                alert('Camera error occurred. Please refresh and try again.');
+            };
+            
+        } catch (error) {
+            console.error('AR start error:', error);
+            alert('Failed to start AR mode. Please try again.');
+        }
+    }
+
+    function getProviderName(provider) {
+        const names = {
+            'ee': 'EE',
+            'o2': 'O2',
+            'vodafone': 'Vodafone',
+            'three': 'Three',
+            'tesco': 'Tesco Mobile',
+            'giffgaff': 'giffgaff'
+        };
+        return names[provider] || provider;
+    }
+
+    function startCompass() {
+        if ('DeviceOrientationEvent' in window) {
+            // Request permission for iOS 13+ devices
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                DeviceOrientationEvent.requestPermission()
+                    .then(permissionState => {
+                        if (permissionState === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation);
+                        } else {
+                            simulateCompass();
+                        }
+                    })
+                    .catch(error => {
+                        console.warn('Device orientation permission denied:', error);
+                        simulateCompass();
+                    });
+            } else {
+                window.addEventListener('deviceorientation', handleOrientation);
+            }
+        } else {
+            simulateCompass();
+        }
+    }
+
+    function handleOrientation(event) {
+        currentHeading = event.alpha ? Math.round(event.alpha) : 0;
+        updatePath();
+    }
+
+    function simulateCompass() {
+        const compassInterval = setInterval(() => {
+            currentHeading = (currentHeading + 1) % 360;
+            updatePath();
+        }, 100);
+        simulationIntervals.push(compassInterval);
+    }
+
+    function updatePath() {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+        const pathLength = Math.min(window.innerWidth, window.innerHeight) * 0.3;
+        
+        const angleRad = (targetDirection - 90) * Math.PI / 180;
+        const endX = centerX + Math.cos(angleRad) * pathLength;
+        const endY = centerY + Math.sin(angleRad) * pathLength;
+        
+        const pathLine = document.getElementById('pathLine');
+        const pathData = `M ${centerX} ${centerY} L ${endX} ${endY}`;
+        pathLine.setAttribute('d', pathData);
+        
+        const endMarker = document.getElementById('pathEndMarker');
+        endMarker.style.left = endX + 'px';
+        endMarker.style.top = endY + 'px';
+        
+        updateCompassDirection(targetDirection);
+    }
+
+    function updateCompassDirection(direction) {
+        const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+        const index = Math.round(direction / 45) % 8;
+        const directionName = directions[index];
+        
+        document.getElementById('compassDirection').textContent = 
+            `${directionName} (${Math.round(direction)}°)`;
+    }
+
+    function updateSignalStrength(strength) {
+        const bars = document.querySelectorAll('.bar');
+        bars.forEach((bar, index) => {
+            bar.classList.toggle('active', index < strength);
+        });
+        
+        // Update numerical display
+        document.getElementById('signalStrengthNumber').textContent = `${strength}/5`;
+        currentSignalStrength = strength;
+    }
+
+    function updateDistanceInfo(distance) {
+        document.getElementById('distanceInfo').textContent = 
+            `Nearest tower: ~${distance}`;
+        currentDistance = distance;
+    }
+
+    function startLiveSimulation() {
+        const providerInfo = providerData[selectedProvider];
+        
+        // Get the appropriate index based on distance
+        let distanceIndex;
+        if (selectedDistance <= 7) distanceIndex = 0;
+        else if (selectedDistance <= 15) distanceIndex = 1;
+        else distanceIndex = 2;
+        
+        // Base values
+        let baseDirection = providerInfo.baseDirections[distanceIndex];
+        let baseDistance = parseFloat(providerInfo.baseDistances[distanceIndex]);
+        let baseStrength = providerInfo.baseStrengths[distanceIndex];
+        
+        // Live signal direction updates (every 2-4 seconds)
+        const directionInterval = setInterval(() => {
+            const variation = (Math.random() - 0.5) * providerInfo.signalVariation * 2;
+            targetDirection = (baseDirection + variation + 360) % 360;
+            updatePath();
+        }, 2000 + Math.random() * 2000);
+        
+        // Live signal strength updates (every 1-3 seconds)
+        const strengthInterval = setInterval(() => {
+            const variation = Math.floor((Math.random() - 0.5) * providerInfo.strengthVariation * 2);
+            const newStrength = Math.max(1, Math.min(5, baseStrength + variation));
+            updateSignalStrength(newStrength);
+        }, 1000 + Math.random() * 2000);
+        
+        // Live distance updates (every 3-5 seconds)
+        const distanceInterval = setInterval(() => {
+            const variation = (Math.random() - 0.5) * providerInfo.distanceVariation * 2;
+            const newDistance = Math.max(0.1, baseDistance + variation);
+            updateDistanceInfo(newDistance.toFixed(1) + 'm');
+        }, 3000 + Math.random() * 2000);
+        
+        // Simulate signal scanning (find new towers occasionally)
+        const scanInterval = setInterval(() => {
+            // Occasionally "find" a better tower
+            if (Math.random() < 0.3) {
+                const newIndex = Math.floor(Math.random() * providerInfo.baseDirections.length);
+                baseDirection = providerInfo.baseDirections[newIndex];
+                baseDistance = parseFloat(providerInfo.baseDistances[newIndex]);
+                baseStrength = providerInfo.baseStrengths[newIndex];
+                
+                // Immediately update to show "switching" to better tower
+                targetDirection = baseDirection;
+                updatePath();
+                updateSignalStrength(baseStrength);
+                updateDistanceInfo(baseDistance.toFixed(1) + 'm');
+            }
+        }, 8000 + Math.random() * 7000);
+        
+        // Store intervals for cleanup
+        simulationIntervals.push(directionInterval, strengthInterval, distanceInterval, scanInterval);
+    }
+
+    // Exit AR mode
+    function exitAR() {
+        // Stop video stream
+        if (video && video.srcObject) {
+            video.srcObject.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+        }
+
+        // Clear simulation intervals
+        simulationIntervals.forEach(interval => clearInterval(interval));
+        simulationIntervals = [];
+
+        // Remove device orientation listener
+        window.removeEventListener('deviceorientation', handleOrientation);
+
+        // Clear geolocation watch
+        if (watchId) {
+            navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+        }
+
+        // Reset UI
+        document.getElementById('arView').style.display = 'none';
+        document.getElementById('landingPage').style.display = 'flex';
+
+        // Reset path
+        const pathLine = document.getElementById('pathLine');
+        pathLine.setAttribute('d', '');
+        const endMarker = document.getElementById('pathEndMarker');
+        endMarker.style.left = '0px';
+        endMarker.style.top = '0px';
+
+        // Reset signal strength and distance
+        updateSignalStrength(4);
+        updateDistanceInfo('8.7m');
+        updateCompassDirection(45);
+    }
+
+    // Handle window resize to keep path centered
+    window.addEventListener('resize', () => {
+        if (document.getElementById('arView').style.display === 'block') {
+            updatePath();
+        }
+    });
+
+    // Handle page visibility change
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && document.getElementById('arView').style.display === 'block') {
+            exitAR();
+        }
+    });
+
+    // Initialize default selection
+    document.querySelector('.provider-card[data-provider="ee"]').classList.add('selected');
+    selectedProvider = 'ee';
+    updateStartButton();
+</script>
+</body>
+</html>
