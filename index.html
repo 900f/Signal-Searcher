@@ -240,12 +240,13 @@
             pointer-events: none;
         }
 
-        .path-end-marker {
+        .path-arrow {
             position: absolute;
             font-size: 2rem;
-            transform: translate(-50%, -50%);
+            transform: translate(-50%, -50%) rotate(0deg);
             text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
             transition: all 0.5s ease;
+            color: #007bff;
         }
 
         .signal-info {
@@ -398,7 +399,7 @@
             <h1>📡 AR Signal Finder</h1>
             <p class="subtitle">
                 Find the best signal direction for your mobile provider using augmented reality. 
-                Select your provider below and let AR guide you to the strongest signal!
+                Select your provider below and follow the AR arrows to the strongest signal!
             </p>
             
             <div class="provider-selection">
@@ -483,15 +484,9 @@
                 </div>
                 
                 <div class="signal-path" id="signalPath">
-                    <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0;">
-                        <defs>
-                            <pattern id="dottedPattern" patternUnits="userSpaceOnUse" width="20" height="4">
-                                <circle cx="10" cy="2" r="2" fill="#007bff" opacity="0.8"/>
-                            </pattern>
-                        </defs>
-                        <path id="pathLine" stroke="url(#dottedPattern)" stroke-width="8" fill="none"/>
-                    </svg>
-                    <div class="path-end-marker" id="pathEndMarker">📡</div>
+                    <div class="path-arrow" id="arrow1">➤</div>
+                    <div class="path-arrow" id="arrow2">➤</div>
+                    <div class="path-arrow" id="arrow3">➤</div>
                 </div>
                 
                 <div class="compass-direction" id="compassDirection">
@@ -526,7 +521,7 @@
     let currentSignalStrength = 4;
     let currentDistance = '8.7m';
 
-    // Enhanced provider data with multiple signal sources and dynamic behavior
+    // Provider data with multiple signal sources and dynamic behavior
     const providerData = {
         'ee': { 
             baseDirections: [45, 120, 280],
@@ -596,7 +591,6 @@
             selectedDistance = parseInt(card.dataset.distance);
             isCustomDistance = false;
             
-            // Clear custom input styling
             document.getElementById('customInputGroup').classList.remove('selected');
             document.getElementById('customDistanceInput').value = '';
             
@@ -753,7 +747,6 @@
 
     function startCompass() {
         if ('DeviceOrientationEvent' in window) {
-            // Request permission for iOS 13+ devices
             if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                 DeviceOrientationEvent.requestPermission()
                     .then(permissionState => {
@@ -792,19 +785,19 @@
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         const pathLength = Math.min(window.innerWidth, window.innerHeight) * 0.3;
-        
-        const angleRad = (targetDirection - 90) * Math.PI / 180;
-        const endX = centerX + Math.cos(angleRad) * pathLength;
-        const endY = centerY + Math.sin(angleRad) * pathLength;
-        
-        const pathLine = document.getElementById('pathLine');
-        const pathData = `M ${centerX} ${centerY} L ${endX} ${endY}`;
-        pathLine.setAttribute('d', pathData);
-        
-        const endMarker = document.getElementById('pathEndMarker');
-        endMarker.style.left = endX + 'px';
-        endMarker.style.top = endY + 'px';
-        
+
+        // Position multiple arrows along the path
+        const arrowCount = 3;
+        const arrows = document.querySelectorAll('.path-arrow');
+        arrows.forEach((arrow, index) => {
+            const progress = (index + 1) / (arrowCount + 1);
+            const arrowX = centerX + Math.cos((targetDirection - 90) * Math.PI / 180) * pathLength * progress;
+            const arrowY = centerY + Math.sin((targetDirection - 90) * Math.PI / 180) * pathLength * progress;
+            arrow.style.left = arrowX + 'px';
+            arrow.style.top = arrowY + 'px';
+            arrow.style.transform = `translate(-50%, -50%) rotate(${targetDirection}deg)`;
+        });
+
         updateCompassDirection(targetDirection);
     }
 
@@ -812,9 +805,7 @@
         const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
         const index = Math.round(direction / 45) % 8;
         const directionName = directions[index];
-        
-        document.getElementById('compassDirection').textContent = 
-            `${directionName} (${Math.round(direction)}°)`;
+        document.getElementById('compassDirection').textContent = `${directionName} (${Math.round(direction)}°)`;
     }
 
     function updateSignalStrength(strength) {
@@ -822,63 +813,52 @@
         bars.forEach((bar, index) => {
             bar.classList.toggle('active', index < strength);
         });
-        
-        // Update numerical display
         document.getElementById('signalStrengthNumber').textContent = `${strength}/5`;
         currentSignalStrength = strength;
     }
 
     function updateDistanceInfo(distance) {
-        document.getElementById('distanceInfo').textContent = 
-            `Nearest tower: ~${distance}`;
+        document.getElementById('distanceInfo').textContent = `Nearest tower: ~${distance}`;
         currentDistance = distance;
     }
 
     function startLiveSimulation() {
         const providerInfo = providerData[selectedProvider];
         
-        // Get the appropriate index based on distance
         let distanceIndex;
         if (selectedDistance <= 7) distanceIndex = 0;
         else if (selectedDistance <= 15) distanceIndex = 1;
         else distanceIndex = 2;
         
-        // Base values
         let baseDirection = providerInfo.baseDirections[distanceIndex];
         let baseDistance = parseFloat(providerInfo.baseDistances[distanceIndex]);
         let baseStrength = providerInfo.baseStrengths[distanceIndex];
         
-        // Live signal direction updates (every 2-4 seconds)
         const directionInterval = setInterval(() => {
             const variation = (Math.random() - 0.5) * providerInfo.signalVariation * 2;
             targetDirection = (baseDirection + variation + 360) % 360;
             updatePath();
         }, 2000 + Math.random() * 2000);
         
-        // Live signal strength updates (every 1-3 seconds)
         const strengthInterval = setInterval(() => {
             const variation = Math.floor((Math.random() - 0.5) * providerInfo.strengthVariation * 2);
             const newStrength = Math.max(1, Math.min(5, baseStrength + variation));
             updateSignalStrength(newStrength);
         }, 1000 + Math.random() * 2000);
         
-        // Live distance updates (every 3-5 seconds)
         const distanceInterval = setInterval(() => {
             const variation = (Math.random() - 0.5) * providerInfo.distanceVariation * 2;
             const newDistance = Math.max(0.1, baseDistance + variation);
             updateDistanceInfo(newDistance.toFixed(1) + 'm');
         }, 3000 + Math.random() * 2000);
         
-        // Simulate signal scanning (find new towers occasionally)
         const scanInterval = setInterval(() => {
-            // Occasionally "find" a better tower
             if (Math.random() < 0.3) {
                 const newIndex = Math.floor(Math.random() * providerInfo.baseDirections.length);
                 baseDirection = providerInfo.baseDirections[newIndex];
                 baseDistance = parseFloat(providerInfo.baseDistances[newIndex]);
                 baseStrength = providerInfo.baseStrengths[newIndex];
                 
-                // Immediately update to show "switching" to better tower
                 targetDirection = baseDirection;
                 updatePath();
                 updateSignalStrength(baseStrength);
@@ -886,63 +866,52 @@
             }
         }, 8000 + Math.random() * 7000);
         
-        // Store intervals for cleanup
         simulationIntervals.push(directionInterval, strengthInterval, distanceInterval, scanInterval);
     }
 
-    // Exit AR mode
     function exitAR() {
-        // Stop video stream
         if (video && video.srcObject) {
             video.srcObject.getTracks().forEach(track => track.stop());
             video.srcObject = null;
         }
 
-        // Clear simulation intervals
         simulationIntervals.forEach(interval => clearInterval(interval));
         simulationIntervals = [];
 
-        // Remove device orientation listener
         window.removeEventListener('deviceorientation', handleOrientation);
 
-        // Clear geolocation watch
         if (watchId) {
             navigator.geolocation.clearWatch(watchId);
             watchId = null;
         }
 
-        // Reset UI
         document.getElementById('arView').style.display = 'none';
         document.getElementById('landingPage').style.display = 'flex';
 
-        // Reset path
-        const pathLine = document.getElementById('pathLine');
-        pathLine.setAttribute('d', '');
-        const endMarker = document.getElementById('pathEndMarker');
-        endMarker.style.left = '0px';
-        endMarker.style.top = '0px';
+        // Reset arrows
+        document.querySelectorAll('.path-arrow').forEach(arrow => {
+            arrow.style.left = '0px';
+            arrow.style.top = '0px';
+            arrow.style.transform = 'translate(-50%, -50%) rotate(0deg)';
+        });
 
-        // Reset signal strength and distance
         updateSignalStrength(4);
         updateDistanceInfo('8.7m');
         updateCompassDirection(45);
     }
 
-    // Handle window resize to keep path centered
     window.addEventListener('resize', () => {
         if (document.getElementById('arView').style.display === 'block') {
             updatePath();
         }
     });
 
-    // Handle page visibility change
     document.addEventListener('visibilitychange', () => {
         if (document.hidden && document.getElementById('arView').style.display === 'block') {
             exitAR();
         }
     });
 
-    // Initialize default selection
     document.querySelector('.provider-card[data-provider="ee"]').classList.add('selected');
     selectedProvider = 'ee';
     updateStartButton();
